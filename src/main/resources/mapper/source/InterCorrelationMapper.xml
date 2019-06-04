@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.geo.rcs.modules.source.dataSourceList.dao.InterCorrelationMapper" >
+  <resultMap id="BaseResultMap" type="com.geo.rcs.modules.source.dataSourceList.entity.InterCorrelation" >
+    <id column="id" property="id" jdbcType="BIGINT" />
+    <result column="inter_id" property="interId" jdbcType="BIGINT" />
+    <result column="unique_code" property="uniqueCode" jdbcType="BIGINT" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    id, inter_id, unique_code
+  </sql>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+    select 
+    <include refid="Base_Column_List" />
+    from engine_inter_permission
+    where id = #{id,jdbcType=BIGINT}
+  </select>
+  <select id="selectByEntity" resultMap="BaseResultMap" parameterType="com.geo.rcs.modules.source.dataSourceList.entity.InterCorrelation" >
+    select
+    <include refid="Base_Column_List" />
+    from engine_inter_permission
+    <where>
+      <if test="id != null" >
+       and  id=#{id}
+      </if>
+      <if test="interId != null" >
+       and  inter_id=#{interId}
+      </if>
+      <if test="uniqueCode != null" >
+        and unique_code=#{uniqueCode}
+      </if>
+    </where>
+  </select>
+  <select id="selectDataSourcePerm" resultType="java.lang.String" parameterType="java.lang.Long">
+    select eri.name from engine_inter_permission ic LEFT JOIN engine_raw_inter eri on ic.inter_id=eri.id where ic.unique_code=#{userId}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long" >
+    delete from engine_inter_permission
+    where id = #{id,jdbcType=BIGINT}
+  </delete>
+  <delete id="deleteByEntity" parameterType="com.geo.rcs.modules.source.dataSourceList.entity.InterCorrelation" >
+    delete from engine_inter_permission
+    <where>
+      <if test="id != null" >
+        and  id=#{id}
+      </if>
+      <if test="interId != null" >
+        and  inter_id=#{interId}
+      </if>
+      <if test="uniqueCode != null" >
+        and unique_code=#{uniqueCode}
+      </if>
+    </where>
+  </delete>
+  <insert id="insert" parameterType="com.geo.rcs.modules.source.dataSourceList.entity.InterCorrelation" >
+    insert into engine_inter_permission (id, inter_id, unique_code
+      )
+    values (#{id,jdbcType=BIGINT}, #{interId,jdbcType=BIGINT}, #{uniqueCode,jdbcType=BIGINT}
+      )
+  </insert>
+  <insert id="insertSelective" parameterType="com.geo.rcs.modules.source.dataSourceList.entity.InterCorrelation" >
+    insert into engine_inter_permission
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="id != null" >
+        id,
+      </if>
+      <if test="interId != null" >
+        inter_id,
+      </if>
+      <if test="uniqueCode != null" >
+        unique_code,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="id != null" >
+        #{id,jdbcType=BIGINT},
+      </if>
+      <if test="interId != null" >
+        #{interId,jdbcType=BIGINT},
+      </if>
+      <if test="uniqueCode != null" >
+        #{uniqueCode,jdbcType=BIGINT}
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.geo.rcs.modules.source.dataSourceList.entity.InterCorrelation" >
+    update engine_inter_permission
+    <set >
+      <if test="interId != null" >
+        inter_id = #{interId,jdbcType=BIGINT},
+      </if>
+      <if test="uniqueCode != null" >
+        unique_code = #{uniqueCode,jdbcType=BIGINT},
+      </if>
+    </set>
+    where id = #{id,jdbcType=BIGINT}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.geo.rcs.modules.source.dataSourceList.entity.InterCorrelation" >
+    update engine_inter_permission
+    set inter_id = #{interId,jdbcType=BIGINT},
+      unique_code = #{uniqueCode,jdbcType=BIGINT}
+    where id = #{id,jdbcType=BIGINT}
+  </update>
+</mapper>

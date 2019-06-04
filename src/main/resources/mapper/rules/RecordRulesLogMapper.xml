@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.geo.rcs.modules.rule.ruleset.dao.RecordRulesLogMapper" >
+
+    <select id="selectByPrimaryKey" resultType="com.geo.rcs.modules.rule.ruleset.entity.EngineHistoryLog">
+        select
+        *
+        from engine_history_log
+        where id = #{id,jdbcType=BIGINT}
+    </select>
+    <insert id="insertBySelective" parameterType="com.geo.rcs.modules.rule.ruleset.entity.EngineHistoryLog" useGeneratedKeys="true" keyProperty="id">
+        insert into engine_history_log
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="rulesMap != null" >
+                rules_map,
+            </if>
+            <if test="ruleSetId != null" >
+                rules_id,
+            </if>
+            <if test="uniqueCode != null" >
+                unique_code,
+            </if>
+            <if test="recordTime != null" >
+                record_time,
+            </if>
+            <if test="describ != null" >
+                describ,
+            </if>
+            <if test="actionType != null" >
+                action_type,
+            </if>
+            <if test="rulesName != null" >
+                rules_name,
+            </if>
+            <if test="version != null" >
+                version,
+            </if>
+            <if test="lastVersion != null" >
+                last_version,
+            </if>
+            <if test="approvalId != null" >
+                approval_id,
+            </if>
+            <if test="submitter != null" >
+                submitter,
+            </if>
+
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="rulesMap != null" >
+                #{rulesMap},
+            </if>
+            <if test="ruleSetId != null" >
+                #{ruleSetId},
+            </if>
+            <if test="uniqueCode != null" >
+                #{uniqueCode},
+            </if>
+            <if test="recordTime != null" >
+                #{recordTime},
+            </if>
+            <if test="describ != null" >
+                #{describ},
+            </if>
+            <if test="actionType != null" >
+                #{actionType},
+            </if>
+            <if test="rulesName!= null" >
+                #{rulesName},
+            </if>
+            <if test="version != null" >
+                #{version},
+            </if>
+            <if test="lastVersion != null" >
+                #{lastVersion},
+            </if>
+            <if test="approvalId != null" >
+                #{approvalId},
+            </if>
+            <if test="submitter != null" >
+                #{submitter},
+            </if>
+        </trim>
+    </insert>
+
+    <select id="getRecordById" resultType="com.geo.rcs.modules.rule.ruleset.entity.EngineHistoryLog" parameterType="com.geo.rcs.modules.rule.ruleset.entity.EngineHistoryLog">
+        SELECT ehl.* FROM engine_history_log ehl LEFT JOIN `approval_manage` am ON ehl.`approval_id` = am.`id` WHERE am.`app_status` = 1
+        <if test="rulesName != null">
+            and ehl.rules_name  like '%${rulesName}%'
+        </if>
+        <if test="actionType != null">
+            and ehl.action_type = #{actionType}
+        </if>
+         and ehl.unique_code = #{uniqueCode} and ehl.rules_id = #{ruleSetId} and ehl.action_type not in (5,6)
+    </select>
+    <delete id="deleteById" parameterType="java.lang.Long">
+        delete from engine_history_log where id = #{logId}
+    </delete>
+
+    <select id="findByPage" resultType="com.geo.rcs.modules.rule.ruleset.entity.EngineHistoryLog">
+        SELECT ehl.app_status,ehl.approval_id,ehl.`id`,ehl.`rules_id` as ruleSetId,ehl.`rules_name`,ehl.`record_time`,ehl.`submitter`,ehl.version,ehl.last_version,ehl.action_type FROM `engine_history_log` ehl
+        LEFT JOIN `approval_manage` am ON am.`id` = ehl.`approval_id` WHERE  ehl.action_type not in (5,6) and ehl.unique_code = #{userId}
+        <if test="ruleSetId != null and ruleSetId != ''">
+            and ehl.`rules_id` = #{ruleSetId}
+        </if>
+        <if test="actionType != null and actionType != '' and actionType == 3">
+            AND ehl.action_type = 3
+        </if>
+        <if test="actionType != null  and actionType != '' and actionType == 4">
+            AND ehl.last_version is null and ehl.action_type != 3
+        </if>
+        <if test="actionType != null  and actionType != '' and actionType == 5">
+            AND ehl.last_version != '' and ehl.action_type != 3
+        </if>
+        <if test="submitter != null and submitter != ''">
+            and ehl.submitter like '%${submitter}%'
+        </if>
+        <if test="startTime != null and startTime !=''">
+            and ehl.record_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null and endTime !=''">
+            and ehl.record_time &lt;= #{endTime}
+        </if>
+        order by ehl.record_time desc
+    </select>
+
+    <select id="findAllOption" resultType="com.geo.rcs.modules.rule.ruleset.entity.EngineHistoryLog">
+        select distinct erpl.`rules_id` as ruleSetId,erpl.rules_name,am.submitter from `engine_history_log` erpl
+        left join `approval_manage` am on erpl.`approval_id` = am.`id`
+        order by am.app_time desc
+    </select>
+
+    <select id="getNearPublishLog" parameterType="java.lang.Long" resultType="com.geo.rcs.modules.rule.ruleset.entity.EngineHistoryLog">
+        select erpl.id,erpl.`version` from `engine_history_log` erpl
+        left join `approval_manage` am on erpl.`approval_id` = am.`id`
+        where erpl.`rules_id` = #{ruleSetId}
+        order by am.`app_time` desc limit 1
+    </select>
+
+    <select id="getRecordedRules" resultType="com.geo.rcs.modules.rule.ruleset.entity.EngineRules" parameterType="map">
+       select DISTINCT ers.id,ers.name from engine_history_log ehl left join engine_rules ers on ehl.rules_id = ers.id where ehl.unique_code = #{userId}
+   </select>
+
+    <update id="updateAppStatus" parameterType="com.geo.rcs.modules.rule.ruleset.entity.EngineHistoryLog">
+        update engine_history_log
+        <set >
+            <if test="appStatus != null" >
+                app_status = #{appStatus},
+            </if>
+            <if test="approvalId != null" >
+                approval_id = #{approvalId},
+            </if>
+        </set>
+         where id = #{id}
+    </update>
+</mapper>

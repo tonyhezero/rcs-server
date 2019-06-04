@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.geo.rcs.modules.sys.dao.SysIdGeneratorMapper">
+
+    <select id="findAll" resultType="java.util.Map">
+		SELECT `key`,`value` FROM `sys_id_generator` group by `key`
+	</select>
+
+    <update id="updateValue">
+        update `sys_id_generator` set `value` = #{value} where `key` = #{key}
+    </update>
+
+</mapper>

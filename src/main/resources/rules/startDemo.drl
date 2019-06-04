@@ -1,0 +1,631 @@
+package com.geo.rcs.modules.engine.drools;
+
+import com.geo.rcs.modules.engine.entity.Message;
+import com.geo.rcs.modules.engine.entity.Field;
+import com.geo.rcs.modules.engine.entity.FunctionField;
+import com.geo.rcs.modules.engine.entity.Condition;
+import com.geo.rcs.modules.engine.entity.Rule;
+import com.geo.rcs.common.util.ObjectUtils;
+import com.geo.rcs.modules.engine.entity.Rules
+import com.geo.rcs.modules.engine.util.EngineCalculator
+import java.math.BigDecimal
+import java.util.HashSet;
+
+
+rule "Rule_Set_Error_Code_Final"
+salience 92
+    when
+        $rs : Rules();
+        $r : Rule() from $rs.ruleList;
+    then
+        if($rs.getErrorCodes()==null){
+            $rs.setErrorCodes(new HashSet<>());
+        }
+        if($r.getResult())$rs.getErrorCodes().add($r.getErrorCode());
+end
+
+rule "Rule_Set_Status_Final"
+salience 93
+    when
+        $rs : Rules( status == 0);
+    then
+        System.out.println("Rule_Set_Id："+$rs.getId()+"Rule_Set_Status_Final:"+$rs.getStatus());
+        $rs.setStatus(1);
+end
+
+rule "Rule_Set_Status"
+salience 94
+    when
+        $rs : Rules(matchType == 1);
+        $r : Rule() from $rs.ruleList;
+    then
+        $rs.setStatus(($r.getResult()?$r.getLevel():0)> $rs.getStatus()?($r.getResult() ? $r.getLevel():0):$rs.getStatus());
+        System.out.println("Rule_Set_Id："+$rs.getId()+"Rule_Set_Status:"+$rs.getStatus());
+        update($rs);
+end
+
+rule "Rule_Set_Refused"
+salience 94
+    when
+        $rs : Rules(matchType == 0,score > thresholdMax)
+    then
+        $rs.setStatus(3);
+        update($rs);
+        System.out.println("Rule_Set_Id："+$rs.getId()+"Rule_Set_Refused:"+$rs.getScore());
+end
+
+rule "Rule_Set_Audit"
+salience 94
+    when
+        $rs : Rules(matchType == 0,score <= thresholdMax,score >= thresholdMin)
+    then
+        $rs.setStatus(2);
+        update($rs);
+        System.out.println("Rule_Set_Id："+$rs.getId()+"Rule_Set_Audit:"+$rs.getScore());
+end
+
+rule "Rule_Set_Access"
+salience 94
+    when
+        $rs : Rules(matchType == 0,score < thresholdMin)
+    then
+        $rs.setStatus(1);
+        update($rs);
+        System.out.println("Rule_Set_Id："+$rs.getId()+"Rule_Set_Access:"+$rs.getScore());
+end
+
+rule "Rule_Set_Score"
+salience 95
+    when
+        $rs : Rules()
+        $total : Integer()
+                 from accumulate( Rule ( $value : score ), sum($value))
+    then
+        $rs.setScore($total);
+        update($rs)
+        System.out.println("Rule_Set_Id："+$rs.getId()+"Rule_Set_Score:"+$rs.getScore());
+end
+
+rule "Rule_Error_Code_OK"
+salience 95
+    when
+        $rs : Rules(matchType == 1);
+        $r : Rule( level == 1) from $rs.ruleList;
+    then
+
+        $r.setErrorCode("OK"+($r.getErrorCode()==null?"":$r.getErrorCode()));
+        update($r)
+end
+
+rule "Rule_Error_Code_OP"
+salience 95
+    when
+        $rs : Rules(matchType == 1);
+        $r : Rule( level == 2) from $rs.ruleList;
+    then
+
+        $r.setErrorCode("OP"+($r.getErrorCode()==null?"":$r.getErrorCode()));
+        update($r)
+end
+
+rule "Rule_Error_Code_HC"
+salience 95
+    when
+        $rs : Rules(matchType == 1);
+        $r : Rule( level == 3) from $rs.ruleList;
+    then
+
+        $r.setErrorCode("HC"+($r.getErrorCode()==null?"":$r.getErrorCode()));
+        update($r)
+end
+
+rule "Rule_Error_Code_SC"
+salience 95
+    when
+        $rs : Rules(matchType == 0);
+        $r : Rule() from $rs.ruleList;
+    then
+
+        $r.setErrorCode("SC"+($r.getErrorCode()==null?"":$r.getErrorCode()));
+        update($r)
+end
+
+rule "Rule_Result"
+salience 96
+    when
+        $r : Rule();
+    then
+        System.out.println("Rule_Id："+$r.getId()+"Rule_FieldRelationShip："+$r.getConditionResultJs());
+        $r.setResult((Boolean) ObjectUtils.getScriptResult($r.getConditionResultJs()));
+        $r.setScore($r.getThreshold()*($r.getResult()?1:0));
+        System.out.println("Condition_Result:"+$r.getResult());
+        System.out.println("Condition_Result_Score:"+$r.getScore());
+end
+
+rule "Rule_Replace"
+salience 97
+    when
+        $r : Rule( conditionResultJs !=null);
+        $c : Condition() from $r.conditionsList;
+    then
+        $r.setConditionResultJs($r.getConditionResultJs().replaceAll($c.getId().toString(),String.valueOf($c.getResult())));
+end
+
+
+rule "Condition_Result"
+salience 98
+    when
+        $c : Condition();
+    then
+        System.out.println("Condition_Id："+$c.getId()+"Condition_FieldRelationShip："+$c.getFieldResultJs());
+        $c.setResult((Boolean) ObjectUtils.getScriptResult($c.getFieldResultJs()));
+        System.out.println("Condition_Result:"+$c.getResult());
+end
+
+rule "Condition_Replace"
+salience 99
+    when
+        $c : Condition( fieldResultJs != null);
+        $f : Field() from $c.fieldList;
+    then
+        $c.setFieldResultJs($c.getFieldResultJs().replaceAll($f.getId().toString(),String.valueOf($f.getResult())));
+end
+
+rule "Field_Zero"
+salience 100
+    when
+        $f : Field(value matches ("^([0-9]{1,}[.][0-9]*)$"))
+    then
+        $f.setValue($f.getValue().replaceAll("0+?$", ""));//去掉多余的0
+        $f.setValue($f.getValue().replaceAll("[.]$", ""));//如最后一位是.则去掉
+end
+
+rule "Field_Equals"
+salience 100
+    when
+        $f : Field(operator == "==", value != null, value != "")
+    then
+        $f.setResult($f.getValue().equals($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+
+rule "Field_Contain"
+salience 100
+    when
+        $f : Field(operator == "include", value != null, value != "")
+    then
+        $f.setResult($f.getParameter().contains($f.getValue()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+
+rule "Field_Not_Include"
+salience 100
+    when
+        $f : Field(operator == "notinclude", value != null, value != "")
+    then
+        $f.setResult(!$f.getParameter().contains($f.getValue()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Not_Equals"
+salience 100
+    when
+        $f : Field(operator == "!=", value != null, value != "")
+    then
+        $f.setResult(!$f.getValue().equals($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Is_Null"
+salience 100
+    when
+        $f : Field(operator == "isnull")
+    then
+        $f.setResult($f.getValue()==null||$f.getValue().length() == 0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Is_Not_Null"
+salience 100
+    when
+        $f : Field(operator == "notnull")
+    then
+        $f.setResult($f.getValue()!=null&&$f.getValue().length()!=0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Integer_Greater"
+salience 100
+    when
+        $f : Field(operator == ">",fieldType == "int", value != null, value != "")
+    then
+        $f.setResult(Double.valueOf($f.getValue())>Double.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Integer_Greater_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == ">=",fieldType == "int", value != null, value != "")
+    then
+        $f.setResult(Double.valueOf($f.getValue())>=Double.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Integer_Less_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == "<=",fieldType == "int", value != null, value != "")
+    then
+        $f.setResult(Double.valueOf($f.getValue())<=Double.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Integer_Less"
+salience 100
+    when
+        $f : Field(operator == "<",fieldType == "int", value != null, value != "")
+    then
+        $f.setResult(Double.valueOf($f.getValue())<Double.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Float_Greater"
+salience 100
+    when
+        $f : Field(operator == ">",fieldType == "float", value != null, value != "")
+    then
+        $f.setResult(new BigDecimal($f.getValue()).compareTo(new BigDecimal($f.getParameter()))> 0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Float_Greater_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == ">=",fieldType == "float", value != null, value != "")
+    then
+        $f.setResult(new BigDecimal($f.getValue()).compareTo(new BigDecimal($f.getParameter()))>= 0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Float_Equal"
+salience 100
+    when
+        $f : Field(operator == "==",fieldType == "float", value != null, value != "")
+    then
+        $f.setResult(new BigDecimal($f.getValue()).compareTo(new BigDecimal($f.getParameter()))== 0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Float_Not_Equal"
+salience 100
+    when
+        $f : Field(operator == "!=",fieldType == "float", value != null, value != "")
+    then
+        $f.setResult(new BigDecimal($f.getValue()).compareTo(new BigDecimal($f.getParameter()))!= 0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Float_Less_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == "<=",fieldType == "float", value != null, value != "")
+    then
+        $f.setResult(new BigDecimal($f.getValue()).compareTo(new BigDecimal($f.getParameter()))<= 0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Float_Less"
+salience 100
+    when
+        $f : Field(operator == "<",fieldType == "float", value != null, value != "")
+    then
+        $f.setResult(new BigDecimal($f.getValue()).compareTo(new BigDecimal($f.getParameter()))< 0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Greater"
+salience 100
+    when
+        $f : Field(operator == ">",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.compareDate($f.getValue(),$f.getParameter())>0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Greater_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == ">=",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.compareDate($f.getValue(),$f.getParameter())>=0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Less_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == "<=",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.compareDate($f.getValue(),$f.getParameter())<=0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Less"
+salience 100
+    when
+        $f : Field(operator == "<",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.compareDate($f.getValue(),$f.getParameter())<0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Diff_Greater"
+salience 100
+    when
+        $f : Field(operator == "->",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffToday($f.getValue()) > Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Diff_Greater_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == "->=",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffToday($f.getValue()) >= Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Diff_Less_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == "-<=",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffToday($f.getValue()) <= Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Diff_Less"
+salience 100
+    when
+        $f : Field(operator == "-<",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffToday($f.getValue()) < Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Diff_Equal"
+salience 100
+    when
+        $f : Field(operator == "-==",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffToday($f.getValue()) == Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Date_Diff_Not_Equal"
+salience 100
+    when
+        $f : Field(operator == "-!=",fieldType == "date", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffToday($f.getValue()) != Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Greater"
+salience 100
+    when
+        $f : Field(operator == ">",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.compareDatetime($f.getValue(),$f.getParameter())>0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Greater_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == ">=",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.compareDatetime($f.getValue(),$f.getParameter())>=0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Less_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == "<=",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.compareDatetime($f.getValue(),$f.getParameter())<=0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Less"
+salience 100
+    when
+        $f : Field(operator == "<",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.compareDatetime($f.getValue(),$f.getParameter())<0);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Diff_Greater"
+salience 100
+    when
+        $f : Field(operator == "->",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffTodayTime($f.getValue()) > Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Diff_Greater_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == "->=",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffTodayTime($f.getValue()) >= Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Diff_Less_Or_Equal"
+salience 100
+    when
+        $f : Field(operator == "-<=",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffTodayTime($f.getValue()) <= Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Diff_Less"
+salience 100
+    when
+        $f : Field(operator == "-<",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffTodayTime($f.getValue()) < Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Diff_Equal"
+salience 100
+    when
+        $f : Field(operator == "-==",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffTodayTime($f.getValue()) == Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_DateTime_Diff_Not_Equal"
+salience 100
+    when
+        $f : Field(operator == "-!=",fieldType == "datetime", value != null, value != "")
+    then
+        $f.setResult(EngineCalculator.diffTodayTime($f.getValue()) != Integer.valueOf($f.getParameter()));
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator()+";parameter:"+$f.getParameter()+";result:"+$f.getResult());
+end
+
+rule "Field_Value_Is_Null"
+salience 101
+    when
+        $f : Field(value == "" || value == null )
+    then
+        $f.setResult(false);
+        $f.setValueDesc("空值");
+end
+
+rule "Field_Value"
+salience 101
+    when
+        $f : Field(value != "" || value != null )
+    then
+        $f.setResult(false);
+        $f.setValueDesc($f.getValue());
+end
+
+
+rule "Function_Field_Value_NULL"
+salience 102
+    when
+        $f : Field();
+        $ff : FunctionField ( value == "" || value == null ) from $f.functionSet
+    then
+        $f.setResult(false);
+        $f.setValue("");
+        $f.setValueDesc("空值");
+        update($f);
+end
+
+rule "Function_Field_Value_SUM"
+salience 103
+    when
+        $f : Field(fieldType == "sum" )
+        $total : BigDecimal()
+                         from accumulate( FunctionField ( functionId == $f.id , value != null, value != "",$value : new BigDecimal(value) ), sum($value))
+    then
+        $total=$total.divide(new BigDecimal(1),2,BigDecimal.ROUND_HALF_UP);
+        $f.setValue($total.toPlainString());
+        $f.setFieldType("float");
+        update($f);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator());
+end
+
+rule "Function_Field_Value_AVG"
+salience 103
+    when
+        $f : Field( fieldType == "avg" )
+        $total : BigDecimal()
+                         from accumulate( FunctionField ( functionId == $f.id , value != null, value != "",$value : new BigDecimal(value) ), average($value))
+    then
+        $total=$total.divide(new BigDecimal(1),2,BigDecimal.ROUND_HALF_UP);
+        $f.setValue($total.toPlainString());
+        $f.setFieldType("float");
+        update($f);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator());
+end
+
+rule "Function_Field_Value_MAX"
+salience 103
+    when
+        $f : Field( fieldType == "max" )
+        $total : BigDecimal()
+                         from accumulate( FunctionField ( functionId == $f.id , value != null, value != "",$value : new BigDecimal(value) ), max($value))
+    then
+        $total=$total.divide(new BigDecimal(1),2,BigDecimal.ROUND_HALF_UP);
+        $f.setValue($total.toPlainString());
+        $f.setFieldType("float");
+        update($f);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator());
+end
+
+rule "Function_Field_Value_MIN"
+salience 103
+    when
+        $f : Field( fieldType == "min" )
+        $total : BigDecimal()
+                         from accumulate( FunctionField ( functionId == $f.id , value != null, value != "",$value : new BigDecimal(value) ), min($value))
+    then
+        $total=$total.divide(new BigDecimal(1),2,BigDecimal.ROUND_HALF_UP);
+        $f.setValue($total.toPlainString());
+        $f.setFieldType("float");
+        update($f);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator());
+end
+
+rule "Function_Field_Value_Date_Diff"
+salience 103
+    when
+        $f : Field( fieldType == "day_diff",functionSet.size() == 2 )
+    then
+        Long date = EngineCalculator.dayDiff($f.getFunctionSet().get(0).getValue(),$f.getFunctionSet().get(1).getValue());
+        $f.setValue(String.valueOf(date));
+        $f.setFieldType("int");
+        update($f);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator());
+end
+
+rule "Function_Field_Value_Date_Month_Diff"
+salience 103
+    when
+        $f : Field( fieldType == "month_diff",functionSet.size() == 2 )
+    then
+        Integer monthSpace = EngineCalculator.getMonthSpace($f.getFunctionSet().get(0).getValue(),$f.getFunctionSet().get(1).getValue());
+        $f.setValue(String.valueOf(monthSpace));
+        $f.setFieldType("int");
+        update($f);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator());
+end
+
+rule "Function_Field_Value_Decreasing"
+salience 103
+    when
+        $f : Field( fieldType == "decreasing",functionSet.size() == 2 )
+        $ff : FunctionField ( value != "", value != null ) from $f.functionSet
+    then
+        Double value = Double.valueOf($f.getFunctionSet().get(0).getValue()) - Double.valueOf($f.getFunctionSet().get(1).getValue());
+        $f.setValue(String.valueOf(value));
+        $f.setFieldType("float");
+        update($f);
+        System.out.println("id:"+$f.getId()+";value:"+$f.getValue()+";operator:"+$f.getOperator());
+end

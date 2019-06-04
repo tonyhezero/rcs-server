@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.geo.rcs.modules.rule.ruleset.dao.EngineRulesOnlineMapper">
+<insert id="insertSelective" parameterType="com.geo.rcs.modules.rule.ruleset.entity.EngineRulesOnline"
+        useGeneratedKeys="true" keyProperty="id">
+    insert into engine_rules_online
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="id != null">
+            id,
+        </if>
+        <if test="name != null">
+            name,
+        </if>
+        <if test="businessId != null">
+            business_id,
+        </if>
+        <if test="senceId != null">
+            sence_id,
+        </if>
+        <if test="matchType != null">
+            match_type,
+        </if>
+        <if test="threshold != null">
+            threshold,
+        </if>
+        <if test="thresholdMin != null">
+            threshold_min,
+        </if>
+        <if test="thresholdMax != null">
+            threshold_max,
+        </if>
+        <if test="describ != null">
+            describ,
+        </if>
+        <if test="addUser != null">
+            add_user,
+        </if>
+        <if test="addTime != null">
+            add_time,
+        </if>
+        <if test="uniqueCode != null">
+            unique_code,
+        </if>
+        <if test="whiteFilter != null">
+            white_filter,
+        </if>
+        <if test="blackFilter != null">
+            black_filter,
+        </if>
+        <if test="rulesJSON != null">
+            rules_json,
+        </if>
+        <if test="parameters != null">
+            parameters,
+        </if>
+        <if test="version != null">
+            version,
+        </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+        <if test="id != null">
+            #{id},
+        </if>
+        <if test="name != null">
+            #{name,jdbcType=VARCHAR},
+        </if>
+        <if test="businessId != null">
+            #{businessId,jdbcType=INTEGER},
+        </if>
+        <if test="senceId != null">
+            #{senceId,jdbcType=INTEGER},
+        </if>
+        <if test="matchType != null">
+            #{matchType,jdbcType=INTEGER},
+        </if>
+        <if test="threshold != null">
+            #{threshold,jdbcType=INTEGER},
+        </if>
+        <if test="thresholdMin != null">
+            #{thresholdMin,jdbcType=INTEGER},
+        </if>
+        <if test="thresholdMax != null">
+            #{thresholdMax,jdbcType=INTEGER},
+        </if>
+        <if test="describ != null">
+            #{describ,jdbcType=VARCHAR},
+        </if>
+        <if test="addUser != null">
+            #{addUser,jdbcType=VARCHAR},
+        </if>
+        <if test="addTime != null">
+            #{addTime,jdbcType=TIMESTAMP},
+        </if>
+        <if test="uniqueCode != null">
+            #{uniqueCode,jdbcType=BIGINT},
+        </if>
+        <if test="whiteFilter != null">
+            #{whiteFilter},
+        </if>
+        <if test="blackFilter != null">
+            #{blackFilter},
+        </if>
+        <if test="rulesJSON != null">
+            #{rulesJSON},
+        </if>
+        <if test="parameters != null">
+            #{parameters},
+        </if>
+        <if test="version != null">
+            #{version},
+        </if>
+    </trim>
+</insert>
+
+    <update id="updateRuleSet" parameterType="com.geo.rcs.modules.rule.ruleset.entity.EngineRulesOnline">
+        update engine_rules_online
+        <set>
+            <if test="name != null">
+                name = #{name,jdbcType=VARCHAR},
+            </if>
+            <if test="businessId != null">
+                business_id = #{businessId,jdbcType=INTEGER},
+            </if>
+            <if test="senceId != null">
+                sence_id = #{senceId,jdbcType=INTEGER},
+            </if>
+            <if test="matchType != null">
+                match_type = #{matchType,jdbcType=INTEGER},
+            </if>
+            <if test="thresholdMin != null">
+                threshold_min = #{thresholdMin,jdbcType=INTEGER},
+            </if>
+            <if test="thresholdMax != null">
+                threshold_max = #{thresholdMax,jdbcType=INTEGER},
+            </if>
+            <if test="threshold != null">
+                threshold = #{threshold,jdbcType=INTEGER},
+            </if>
+            <if test="describ != null">
+                describ = #{describ,jdbcType=VARCHAR},
+            </if>
+            <if test="whiteFilter != null">
+                white_filter = #{whiteFilter},
+            </if>
+            <if test="blackFilter != null">
+                black_filter = #{blackFilter},
+            </if>
+            <if test="rulesJSON != null">
+                rules_json = #{rulesJSON},
+            </if>
+            <if test="parameters != null">
+                parameters = #{parameters},
+            </if>
+            <if test="version != null">
+                version = #{version},
+            </if>
+        </set>
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <update id="updateRuleSetVerify" parameterType="com.geo.rcs.modules.rule.ruleset.entity.EngineRulesOnline">
+        update engine_rules_online
+        <set>
+            <if test="verify != null">
+                verify = #{verify},
+            </if>
+            <if test="active != null">
+                active = #{active},
+            </if>
+        </set>
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+      delete from engine_rules_online
+      where id = #{id,jdbcType=BIGINT}
+  </delete>
+
+    <select id="findRulesById" resultMap="RulesOnlineMap" flushCache="true">
+        select ers.* from engine_rules_online ers
+        left join `engine_rules` er on ers.`id` = er.`id` where ers.id = #{id,jdbcType=BIGINT} and er.status!=1
+    </select>
+
+    <!-- 分页查询 -->
+    <select id="findByPage" resultMap="RulesMap"
+            parameterType="com.geo.rcs.modules.rule.ruleset.entity.EngineRules">
+        select es.`id`,es.`name`,es.`business_id`,es.`sence_id`,es.`match_type`,es.`threshold`,es.`threshold_min`,es.`threshold_max`,
+        es.`describ`,es.`verify`,es.`active`,es.`add_user`,es.`add_time`,es.parameters,eb.type_name,ec.name as scene_name
+        from engine_rules_online es left join engine_business_type eb on
+        es.business_id = eb.id left join engine_scenes ec on ec.id = es.sence_id
+        left join `engine_rules` er on es.`id` = er.`id`
+        WHERE er.status !=1
+        <if test="name != null">
+            AND CONCAT(es.id,es.name,es.add_user) LIKE CONCAT('%',#{name},'%')
+        </if>
+        <if test="businessId != null">
+            and es.business_id = #{businessId}
+        </if>
+        <if test="senceId != null">
+            and es.sence_id = #{senceId}
+        </if>
+        <if test="verify != null">
+            and es.verify = #{verify}
+        </if>
+        <if test="active != null">
+            and es.active = #{active}
+        </if>
+        <if test="matchType!= null and matchType == 2">
+            and es.match_type = 2
+        </if>
+        <if test="matchType!= null and matchType != 2">
+            and es.match_type != 2
+        </if>
+        and es.unique_code = #{uniqueCode} order by add_time desc
+    </select>
+    <!-- 分页查询 -->
+
+    <resultMap id="RulesMap" type="com.geo.rcs.modules.rule.ruleset.entity.EngineRules">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="business_id" property="businessId" jdbcType="INTEGER"/>
+        <result column="sence_id" property="senceId" jdbcType="INTEGER"/>
+        <result column="match_type" property="matchType" jdbcType="INTEGER"/>
+        <result column="threshold_min" property="thresholdMin" jdbcType="INTEGER"/>
+        <result column="threshold_max" property="thresholdMax" jdbcType="INTEGER"/>
+        <result column="describ" property="describ" jdbcType="VARCHAR"/>
+        <result column="verify" property="verify" jdbcType="INTEGER"/>
+        <result column="active" property="active" jdbcType="INTEGER"/>
+        <result column="add_user" property="addUser" jdbcType="VARCHAR"/>
+        <result column="add_time" property="addTime" jdbcType="TIMESTAMP"/>
+        <result column="parameters" property="parameters" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <resultMap id="RulesOnlineMap" type="com.geo.rcs.modules.rule.ruleset.entity.EngineRulesOnline">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="business_id" property="businessId" jdbcType="INTEGER"/>
+        <result column="sence_id" property="senceId" jdbcType="INTEGER"/>
+        <result column="match_type" property="matchType" jdbcType="INTEGER"/>
+        <result column="threshold_min" property="thresholdMin" jdbcType="INTEGER"/>
+        <result column="threshold_max" property="thresholdMax" jdbcType="INTEGER"/>
+        <result column="describ" property="describ" jdbcType="VARCHAR"/>
+        <result column="verify" property="verify" jdbcType="INTEGER"/>
+        <result column="active" property="active" jdbcType="INTEGER"/>
+        <result column="add_user" property="addUser" jdbcType="VARCHAR"/>
+        <result column="add_time" property="addTime" jdbcType="TIMESTAMP"/>
+        <result column="parameters" property="parameters" jdbcType="VARCHAR"/>
+        <result column="rules_json" property="rulesJSON" jdbcType="VARCHAR"/>
+    </resultMap>
+</mapper>
